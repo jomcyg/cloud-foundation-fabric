@@ -140,6 +140,7 @@ variable "groups" {
     # However, we recommend creating gcp-support and updating the
     # value in the following line
     gcp-support = "gcp-devops"
+    
   }
 }
 
