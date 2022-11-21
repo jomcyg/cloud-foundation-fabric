@@ -28,8 +28,8 @@ BASEDIR = os.path.dirname(os.path.dirname(__file__))
 def _plan_runner():
   "Returns a function to run Terraform plan on a fixture."
 
-  def run_plan(fixture_path=None, targets=None, refresh=True, tmpdir=True,
-               **tf_vars):
+  def run_plan(fixture_path=None, extra_files=None, tf_var_file=None,
+               targets=None, refresh=True, tmpdir=True, **tf_vars):
     "Runs Terraform plan and returns parsed output."
     if fixture_path is None:
       # find out the fixture directory from the caller's directory
@@ -46,9 +46,9 @@ def _plan_runner():
         shutil.copytree(fixture_path, tmp_path, dirs_exist_ok=True)
       tf = tftest.TerraformTest(tmp_path if tmpdir else fixture_path, BASEDIR,
                                 os.environ.get('TERRAFORM', 'terraform'))
-      tf.setup(upgrade=True)
-      plan = tf.plan(output=True, refresh=refresh, tf_vars=tf_vars,
-                     targets=targets)
+      tf.setup(extra_files=extra_files, upgrade=True)
+      plan = tf.plan(output=True, refresh=refresh, tf_var_file=tf_var_file,
+                     tf_vars=tf_vars, targets=targets)
     return plan
 
   return run_plan
@@ -58,9 +58,11 @@ def _plan_runner():
 def plan_runner(_plan_runner):
   "Returns a function to run Terraform plan on a module fixture."
 
-  def run_plan(fixture_path=None, targets=None, **tf_vars):
+  def run_plan(fixture_path=None, extra_files=None, tf_var_file=None,
+               targets=None, **tf_vars):
     "Runs Terraform plan and returns plan and module resources."
-    plan = _plan_runner(fixture_path, targets=targets, **tf_vars)
+    plan = _plan_runner(fixture_path, extra_files=extra_files,
+                        tf_var_file=tf_var_file, targets=targets, **tf_vars)
     # skip the fixture
     root_module = plan.root_module['child_modules'][0]
     return plan, root_module['resources']
@@ -72,11 +74,11 @@ def plan_runner(_plan_runner):
 def e2e_plan_runner(_plan_runner):
   "Returns a function to run Terraform plan on an end-to-end fixture."
 
-  def run_plan(fixture_path=None, targets=None, refresh=True,
-               include_bare_resources=False, **tf_vars):
+  def run_plan(fixture_path=None, tf_var_file=None, targets=None, 
+               refresh=True, include_bare_resources=False, **tf_vars):
     "Runs Terraform plan on an end-to-end module using defaults, returns data."
-    plan = _plan_runner(fixture_path, targets=targets, refresh=refresh,
-                        **tf_vars)
+    plan = _plan_runner(fixture_path, tf_var_file=tf_var_file, targets=targets, 
+                        refresh=refresh, **tf_vars)
     # skip the fixture
     root_module = plan.root_module['child_modules'][0]
     modules = dict((mod['address'], mod['resources'])
@@ -98,18 +100,18 @@ def recursive_e2e_plan_runner(_plan_runner):
   def walk_plan(node, modules, resources):
     # TODO(jccb): this would be better with node.get() but
     # TerraformPlanOutput objects don't have it
-    new_modules = node['child_modules'] if 'child_modules' in node else []
-    resources += node['resources'] if 'resources' in node else []
+    new_modules = node.get('child_modules', [])
+    resources += node.get('resources', [])
     modules += new_modules
     for module in new_modules:
       walk_plan(module, modules, resources)
 
-  def run_plan(fixture_path=None, targets=None, refresh=True,
+  def run_plan(fixture_path=None, tf_var_file=None, targets=None, refresh=True,
                include_bare_resources=False, compute_sums=True, tmpdir=True,
                **tf_vars):
     "Runs Terraform plan on a root module using defaults, returns data."
-    plan = _plan_runner(fixture_path, targets=targets, refresh=refresh,
-                        tmpdir=tmpdir, **tf_vars)
+    plan = _plan_runner(fixture_path, tf_var_file=tf_var_file, targets=targets, 
+                        refresh=refresh, tmpdir=tmpdir, **tf_vars)
     modules = []
     resources = []
     walk_plan(plan.root_module, modules, resources)

@@ -130,10 +130,12 @@ module "vpc-shared" {
 }
 
 module "vpc-shared-firewall" {
-  source       = "../../../modules/net-vpc-firewall"
-  project_id   = module.project-host.project_id
-  network      = module.vpc-shared.name
-  admin_ranges = values(var.ip_ranges)
+  source     = "../../../modules/net-vpc-firewall"
+  project_id = module.project-host.project_id
+  network    = module.vpc-shared.name
+  default_rules_config = {
+    admin_ranges = values(var.ip_ranges)
+  }
 }
 
 module "nat" {
@@ -219,11 +221,13 @@ module "cluster-1" {
 }
 
 module "cluster-1-nodepool-1" {
-  source          = "../../../modules/gke-nodepool"
-  count           = var.cluster_create ? 1 : 0
-  name            = "nodepool-1"
-  project_id      = module.project-svc-gke.project_id
-  location        = module.cluster-1.0.location
-  cluster_name    = module.cluster-1.0.name
-  service_account = {}
+  source       = "../../../modules/gke-nodepool"
+  count        = var.cluster_create ? 1 : 0
+  name         = "nodepool-1"
+  project_id   = module.project-svc-gke.project_id
+  location     = module.cluster-1.0.location
+  cluster_name = module.cluster-1.0.name
+  service_account = {
+    create = true
+  }
 }

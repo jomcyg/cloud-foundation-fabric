@@ -40,16 +40,16 @@ variable "custom_roles" {
   nullable    = false
 }
 
-variable "descriptive_name" {
-  description = "Name of the project name. Used for project name instead of `name` variable."
-  type        = string
-  default     = null
-}
-
 variable "default_service_account" {
   description = "Project default service account setting: can be one of `delete`, `deprivilege`, `disable`, or `keep`."
   default     = "keep"
   type        = string
+}
+
+variable "descriptive_name" {
+  description = "Name of the project name. Used for project name instead of `name` variable."
+  type        = string
+  default     = null
 }
 
 variable "group_iam" {
@@ -102,23 +102,32 @@ variable "logging_exclusions" {
 variable "logging_sinks" {
   description = "Logging sinks to create for this project."
   type = map(object({
-    destination   = string
-    type          = string
-    filter        = string
-    iam           = bool
-    unique_writer = bool
-    # TODO exclusions also support description and disabled
-    exclusions = map(string)
+    bq_partitioned_table = optional(bool)
+    description          = optional(string)
+    destination          = string
+    disabled             = optional(bool, false)
+    exclusions           = optional(map(string), {})
+    filter               = string
+    iam                  = optional(bool, true)
+    type                 = string
+    unique_writer        = optional(bool)
   }))
+  default  = {}
+  nullable = false
   validation {
     condition = alltrue([
-      for k, v in(var.logging_sinks == null ? {} : var.logging_sinks) :
+      for k, v in var.logging_sinks :
       contains(["bigquery", "logging", "pubsub", "storage"], v.type)
     ])
     error_message = "Type must be one of 'bigquery', 'logging', 'pubsub', 'storage'."
   }
-  default  = {}
-  nullable = false
+  validation {
+    condition = alltrue([
+      for k, v in var.logging_sinks :
+      v.bq_partitioned_table != true || v.type == "bigquery"
+    ])
+    error_message = "Can only set bq_partitioned_table when type is `bigquery`."
+  }
 }
 
 variable "metric_scopes" {
@@ -131,6 +140,52 @@ variable "metric_scopes" {
 variable "name" {
   description = "Project name and id suffix."
   type        = string
+}
+
+variable "org_policies" {
+  description = "Organization policies applied to this project keyed by policy name."
+  type = map(object({
+    inherit_from_parent = optional(bool) # for list policies only.
+    reset               = optional(bool)
+
+    # default (unconditional) values
+    allow = optional(object({
+      all    = optional(bool)
+      values = optional(list(string))
+    }))
+    deny = optional(object({
+      all    = optional(bool)
+      values = optional(list(string))
+    }))
+    enforce = optional(bool, true) # for boolean policies only.
+
+    # conditional values
+    rules = optional(list(object({
+      allow = optional(object({
+        all    = optional(bool)
+        values = optional(list(string))
+      }))
+      deny = optional(object({
+        all    = optional(bool)
+        values = optional(list(string))
+      }))
+      enforce = optional(bool, true) # for boolean policies only.
+      condition = object({
+        description = optional(string)
+        expression  = optional(string)
+        location    = optional(string)
+        title       = optional(string)
+      })
+    })), [])
+  }))
+  default  = {}
+  nullable = false
+}
+
+variable "org_policies_data_path" {
+  description = "Path containing org policies in YAML format."
+  type        = string
+  default     = null
 }
 
 variable "oslogin" {
@@ -164,29 +219,14 @@ variable "parent" {
   }
 }
 
-variable "policy_boolean" {
-  description = "Map of boolean org policies and enforcement value, set value to null for policy restore."
-  type        = map(bool)
-  default     = {}
-  nullable    = false
-}
-
-variable "policy_list" {
-  description = "Map of list org policies, status is true for allow, false for deny, null for restore. Values can only be used for allow or deny."
-  type = map(object({
-    inherit_from_parent = bool
-    suggested_value     = string
-    status              = bool
-    values              = list(string)
-  }))
-  default  = {}
-  nullable = false
-}
-
 variable "prefix" {
-  description = "Prefix used to generate project id and name."
+  description = "Optional prefix used to generate project id and name."
   type        = string
   default     = null
+  validation {
+    condition     = var.prefix != ""
+    error_message = "Prefix cannot be empty, please use null instead."
+  }
 }
 
 variable "project_create" {

@@ -25,7 +25,6 @@ locals {
     Environment="HOME=/home/opsagent"
     ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
     ExecStart=/usr/bin/docker run --rm --name=monitoring-agent \
-          --log-driver=gcplogs \
           --network host \
           -v /etc/google-cloud-ops-agent/config.yaml:/etc/google-cloud-ops-agent/config.yaml \
           ${var.ops_agent_image}
@@ -161,28 +160,22 @@ module "firewall" {
   source     = "../../../modules/net-vpc-firewall"
   project_id = module.project.project_id
   network    = module.vpc.name
-  custom_rules = {
+  ingress_rules = {
     format("%sallow-http-to-proxy-cluster", var.prefix) = {
-      description          = "Allow Nginx HTTP(S) ingress traffic"
-      direction            = "INGRESS"
-      action               = "allow"
-      sources              = []
-      ranges               = [var.cidrs[var.subnetwork], "35.191.0.0/16", "130.211.0.0/22"]
+      description = "Allow Nginx HTTP(S) ingress traffic"
+      source_ranges = [
+        var.cidrs[var.subnetwork], "35.191.0.0/16", "130.211.0.0/22"
+      ]
       targets              = [module.service-account-proxy.email]
       use_service_accounts = true
       rules                = [{ protocol = "tcp", ports = [80, 443] }]
-      extra_attributes     = {}
     }
     format("%sallow-iap-ssh", var.prefix) = {
       description          = "Allow Nginx SSH traffic from IAP"
-      direction            = "INGRESS"
-      action               = "allow"
-      sources              = []
-      ranges               = ["35.235.240.0/20"]
+      source_ranges        = ["35.235.240.0/20"]
       targets              = [module.service-account-proxy.email]
       use_service_accounts = true
       rules                = [{ protocol = "tcp", ports = [22] }]
-      extra_attributes     = {}
     }
   }
 }
@@ -311,7 +304,8 @@ module "proxy-vm" {
   }
   create_template = true
   metadata = {
-    user-data = !var.tls ? module.cos-nginx.0.cloud_config : module.cos-nginx-tls.0.cloud_config
+    user-data              = !var.tls ? module.cos-nginx.0.cloud_config : module.cos-nginx-tls.0.cloud_config
+    google-logging-enabled = true
   }
   service_account        = module.service-account-proxy.email
   service_account_create = false

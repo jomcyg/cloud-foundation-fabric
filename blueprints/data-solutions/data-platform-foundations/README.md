@@ -135,7 +135,6 @@ service_encryption_keys = {
     storage  = "KEY_URL_MULTIREGIONAL"
     pubsub   = "KEY_URL_MULTIREGIONAL"
 }
-# tftest skip
 ```
 
 This step is optional and depends on customer policies and security best practices.
@@ -160,9 +159,10 @@ You can find more details and best practices on using DLP to De-identification a
 [Data Catalog](https://cloud.google.com/data-catalog) helps you to document your data entry at scale. Data Catalog relies on [tags](https://cloud.google.com/data-catalog/docs/tags-and-tag-templates#tags) and [tag template](https://cloud.google.com/data-catalog/docs/tags-and-tag-templates#tag-templates) to manage metadata for all data entries in a unified and centralized service. To implement [column-level security](https://cloud.google.com/bigquery/docs/column-level-security-intro) on BigQuery, we suggest to use `Tags` and `Tag templates`.
 
 The default configuration will implement 3 tags:
- - `3_Confidential`: policy tag for columns that include very sensitive information, such as credit card numbers.
- - `2_Private`: policy tag for columns that include sensitive personal identifiable information (PII) information, such as a person's first name.
- - `1_Sensitive`: policy tag for columns that include data that cannot be made public, such as the credit limit.
+
+- `3_Confidential`: policy tag for columns that include very sensitive information, such as credit card numbers.
+- `2_Private`: policy tag for columns that include sensitive personal identifiable information (PII) information, such as a person's first name.
+- `1_Sensitive`: policy tag for columns that include data that cannot be made public, such as the credit limit.
 
 Anything that is not tagged is available to all users who have access to the data warehouse.
 
@@ -197,8 +197,7 @@ billing_account_id  = "111111-222222-333333"
 older_id            = "folders/123456789012"
 organization_domain = "domain.com"
 prefix              = "myco"
-# tftest skip`
-``
+```
 
 For more fine details check variables on [`variables.tf`](./variables.tf) and update according to the desired configuration. Remember to create team groups described [below](#groups).
 
@@ -222,7 +221,7 @@ module "data-platform" {
   prefix              = "myprefix"
 }
 
-# tftest modules=42 resources=315
+# tftest modules=42 resources=316
 ```
 
 ## Customizations
@@ -238,7 +237,7 @@ To do this, you need to remove IAM binging at project-level for the `data-analys
 
 ## Demo pipeline
 
-The application layer is out of scope of this script. As a demo purpuse only, several Cloud Composer DAGs are provided. Demos will import data from the `drop off` area to the `Data Warehouse Confidential` dataset suing different features. 
+The application layer is out of scope of this script. As a demo purpuse only, several Cloud Composer DAGs are provided. Demos will import data from the `drop off` area to the `Data Warehouse Confidential` dataset suing different features.
 
 You can find examples in the `[demo](./demo)` folder.
 <!-- BEGIN TFDOC -->
