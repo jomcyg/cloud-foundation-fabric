@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-locals {
-  prefix = (var.prefix == null || var.prefix == "") ? "" : "${var.prefix}-"
-}
-
 module "project" {
   source = "../../../modules/project"
   billing_account = (
@@ -28,8 +24,9 @@ module "project" {
     ? var.project_create.parent
     : null
   )
-  prefix = var.project_create == null ? null : var.prefix
-  name   = var.project_id
+  project_create = var.project_create != null
+  prefix         = var.project_create == null ? null : var.prefix
+  name           = var.project_id
   services = [
     "compute.googleapis.com",
     "dns.googleapis.com",
@@ -41,7 +38,7 @@ module "vpc" {
   count      = var.network_config == null ? 1 : 0
   source     = "../../../modules/net-vpc"
   project_id = module.project.project_id
-  name       = "${local.prefix}vpc"
+  name       = "${var.prefix}-vpc"
   subnets = [
     {
       ip_cidr_range = var.subnet_ip_cidr_block
@@ -90,7 +87,7 @@ module "server" {
   }
   group = {
     named_ports = {
-      http = 443
+      https = 443
     }
   }
   tags = ["https-server"]
@@ -98,71 +95,27 @@ module "server" {
 
 module "glb" {
   source     = "../../../modules/net-glb"
-  name       = "${local.prefix}glb"
+  name       = "${var.prefix}-glb"
   project_id = module.project.project_id
-
-  https              = true
-  reserve_ip_address = true
-
-  ssl_certificates_config = {
-    adfs-domain = {
-      domains = [
-        "${var.adfs_dns_domain_name}"
-      ],
-      unmanaged_config = null
+  protocol   = "HTTPS"
+  backend_service_configs = {
+    default = {
+      backends        = [{ backend = module.server.group.id }]
+      log_sample_rate = 1
+      protocol        = "HTTPS"
     }
   }
-
-  target_proxy_https_config = {
-    ssl_certificates = [
-      "adfs-domain"
-    ]
-  }
-
-  backend_services_config = {
-    adfs-group-backend = {
-      bucket_config = null
-      enable_cdn    = false
-      cdn_config    = null
-      group_config = {
-        backends = [
-          {
-            group   = module.server.group.id
-            options = null
-          }
-        ],
-        health_checks = ["hc"]
-        log_config = {
-          enable      = true
-          sample_rate = 1
-        }
-        options = {
-          affinity_cookie_ttl_sec         = null
-          custom_request_headers          = null
-          custom_response_headers         = null
-          connection_draining_timeout_sec = null
-          load_balancing_scheme           = null
-          locality_lb_policy              = null
-          port_name                       = null
-          security_policy                 = null
-          session_affinity                = null
-          timeout_sec                     = null
-          circuits_breakers               = null
-          consistent_hash                 = null
-          iap                             = null
-          protocol                        = "HTTPS"
-        }
+  health_check_configs = {
+    default = {
+      https = {
+        port_specification = "USE_SERVING_PORT"
       }
     }
   }
-  health_checks_config = {
-    hc = {
-      type    = "tcp"
-      logging = true
-      options = null
-      check = {
-        port_name          = "http"
-        port_specification = "USE_NAMED_PORT"
+  ssl_certificates = {
+    managed_configs = {
+      adfs-domain = {
+        domains = ["${var.adfs_dns_domain_name}"]
       }
     }
   }

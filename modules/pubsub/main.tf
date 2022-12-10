@@ -37,7 +37,7 @@ locals {
 
 resource "google_pubsub_schema" "default" {
   count      = var.schema == null ? 0 : 1
-  name       = "{$var.name}-schema"
+  name       = "${var.name}-schema"
   type       = var.schema.schema_type
   definition = var.schema.definition
   project    = var.project_id
@@ -114,6 +114,16 @@ resource "google_pubsub_subscription" "default" {
           audience              = local.oidc_config[each.key].audience
         }
       }
+    }
+  }
+
+  dynamic "bigquery_config" {
+    for_each = try(var.bigquery_subscription_configs[each.key], null) == null ? [] : [""]
+    content {
+      table               = var.bigquery_subscription_configs[each.key].table
+      use_topic_schema    = var.bigquery_subscription_configs[each.key].use_topic_schema
+      write_metadata      = var.bigquery_subscription_configs[each.key].write_metadata
+      drop_unknown_fields = var.bigquery_subscription_configs[each.key].drop_unknown_fields
     }
   }
 }

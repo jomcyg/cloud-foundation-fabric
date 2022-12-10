@@ -56,17 +56,17 @@ variable "domain" {
   type        = string
 }
 
-variable "forwarders" {
-  description = "Map of {IPV4_ADDRESS => FORWARDING_PATH} for 'forwarding' zone types. Path can be 'default', 'private', or null for provider default."
-  type        = map(string)
-  default     = {}
-}
-
 variable "enable_logging" {
   description = "Enable query logging for this zone. Only valid for public zones."
   type        = bool
   default     = false
   nullable    = false
+}
+
+variable "forwarders" {
+  description = "Map of {IPV4_ADDRESS => FORWARDING_PATH} for 'forwarding' zone types. Path can be 'default', 'private', or null for provider default."
+  type        = map(string)
+  default     = {}
 }
 
 variable "name" {
@@ -127,12 +127,12 @@ variable "service_directory_namespace" {
 }
 
 variable "type" {
-  description = "Type of zone to create, valid values are 'public', 'private', 'forwarding', 'peering', 'service-directory'."
+  description = "Type of zone to create, valid values are 'public', 'private', 'forwarding', 'peering', 'service-directory','reverse-managed'."
   type        = string
   default     = "private"
   validation {
-    condition     = contains(["public", "private", "forwarding", "peering", "service-directory"], var.type)
-    error_message = "Zone must be one of 'public', 'private', 'forwarding', 'peering', 'service-directory'."
+    condition     = contains(["public", "private", "forwarding", "peering", "service-directory", "reverse-managed"], var.type)
+    error_message = "Zone must be one of 'public', 'private', 'forwarding', 'peering', 'service-directory','reverse-managed'."
   }
 }
 
